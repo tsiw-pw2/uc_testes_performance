@@ -1,0 +1,11 @@
+{
+  "name": "testes-projeto",
+  "private": true,
+  "scripts": {
+    "test:all": "node -e \"const fs=require('fs'),{execSync}=require('child_process');fs.readdirSync('src/tests').filter(f=>/^RF\\d+\\.js$/.test(f)).sort((a,b)=>Number(a.match(/\\d+/)[0])-Number(b.match(/\\d+/)[0])).forEach(f=>{console.log('\\n>>> '+f);execSync('node src/tests/'+f,{stdio:'inherit'})})\""
+  },
+  "dependencies": {
+    "chromedriver": "149.0.3",
+    "selenium-webdriver": "^4.44.0"
+  }
+}
