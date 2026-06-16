@@ -148,16 +148,11 @@ async function lerPresencaNaCampanha(driver) {
   return (await celulas[5].getText()).trim();
 }
 
-async function confirmarLimpezaVoluntario(driver) {
+async function abrirModalGerirInscricao(driver) {
   await aguardarVoluntarioNaTabela(driver);
 
   const presencaAntes = await lerPresencaNaCampanha(driver);
-  console.log(`Presença antes: ${presencaAntes}`);
-
-  if (presencaAntes === "Sim") {
-    console.log("Presença já estava confirmada; a saltar edição na campanha.");
-    return;
-  }
+  console.log(`Presença antes: ${presencaAntes || "(vazio)"}`);
 
   const botaoGerir = await driver.wait(
     until.elementLocated(
@@ -174,9 +169,44 @@ async function confirmarLimpezaVoluntario(driver) {
     until.elementLocated(By.id("edit-registration-title")),
     10000,
   );
-  await pausa(driver);
+  await pausa(driver, 500);
+  console.log("Modal «Gerir inscrição» aberto.");
+}
 
-  await escolherOpcaoSelectModal(driver, "edit-reg-attendance", "Presente");
+async function abrirDropdownPresenca(driver) {
+  const modal = await driver.findElement(
+    By.xpath(
+      "//div[@role='dialog'][.//*[@id='edit-registration-title']]",
+    ),
+  );
+  const combobox = await modal.findElement(By.id("edit-reg-attendance"));
+  await combobox.click();
+  await pausa(driver, 400);
+
+  await driver.wait(
+    until.elementLocated(By.css('[role="listbox"]')),
+    10000,
+  );
+  await pausa(driver, 500);
+  console.log("Dropdown de presença aberto.");
+}
+
+async function confirmarPresencaPresenteCampanha(driver) {
+  const listboxes = await driver.findElements(By.css('[role="listbox"]'));
+  if (listboxes.length === 0) {
+    await escolherOpcaoSelectModal(driver, "edit-reg-attendance", "Presente");
+  } else {
+    const opcao = await driver.wait(
+      until.elementLocated(
+        By.xpath(
+          "//div[@role='listbox']//div[@role='option'][.//span[normalize-space()='Presente'] or normalize-space()='Presente']",
+        ),
+      ),
+      10000,
+    );
+    await opcao.click();
+    await pausa(driver, 450);
+  }
 
   const guardar = await driver.findElement(
     By.xpath(
@@ -202,7 +232,7 @@ async function confirmarLimpezaVoluntario(driver) {
   }
 
   console.log(
-    `Limpeza confirmada para ${VOLUNTARIO_NOME} (presença: ${presencaAntes} → ${presencaDepois}).`,
+    `Limpeza confirmada para ${VOLUNTARIO_NOME} (presença: ${presencaDepois}).`,
   );
 }
 
@@ -265,10 +295,48 @@ async function main() {
   try {
     console.log("=== RF08 ===");
     await executarPasso(driver, 1, "Login como administrador", "login", () => fazerLogin(driver));
-    await executarPasso(driver, 2, "Abrir separador de voluntários", "voluntarios_abertos", () => abrirVoluntariosCampanha(driver));
-    await executarPasso(driver, 3, "Confirmar limpeza do voluntário", "limpeza_confirmada", () => confirmarLimpezaVoluntario(driver));
-    await executarPasso(driver, 4, "Abrir currículo do voluntário", "curriculo_aberto", () => abrirCurriculoVoluntario(driver));
-    await executarPasso(driver, 5, "Verificar participação no currículo", "participacao_verificada", () => verificarParticipacaoNoCurriculo(driver));
+    await executarPasso(
+      driver,
+      2,
+      "Abrir separador de voluntários",
+      "voluntarios_abertos",
+      () => abrirVoluntariosCampanha(driver),
+    );
+    await executarPasso(
+      driver,
+      3,
+      "Modal Gerir inscrição aberto",
+      "modal_gerir_inscricao",
+      () => abrirModalGerirInscricao(driver),
+    );
+    await executarPasso(
+      driver,
+      4,
+      "Dropdown de presença aberto",
+      "dropdown_presenca_aberto",
+      () => abrirDropdownPresenca(driver),
+    );
+    await executarPasso(
+      driver,
+      5,
+      "Presença confirmada na campanha",
+      "presenca_confirmada_campanha",
+      () => confirmarPresencaPresenteCampanha(driver),
+    );
+    await executarPasso(
+      driver,
+      6,
+      "Currículo do voluntário (participações)",
+      "curriculo_aberto",
+      () => abrirCurriculoVoluntario(driver),
+    );
+    await executarPasso(
+      driver,
+      7,
+      "Participação com presença Presente no currículo",
+      "participacao_verificada",
+      () => verificarParticipacaoNoCurriculo(driver),
+    );
 
     console.log("=== Teste concluído com sucesso ===");
   } catch (erro) {

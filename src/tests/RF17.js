@@ -379,29 +379,48 @@ async function aguardarMensagemGuardada(driver, timeoutMs = 20000) {
   return ultimoTexto;
 }
 
-async function editarConcelhoPraia(driver) {
-  const concelhoAntes = await lerConcelhoNaTabela(driver, PRAIA_NOME);
-  console.log(`Concelho actual na lista: ${concelhoAntes}`);
+async function confirmarConcelhoActualNaLista(driver) {
+  const concelho = await lerConcelhoNaTabela(driver, PRAIA_NOME);
+  console.log(`Concelho actual na lista: ${concelho}`);
 
+  if (concelho !== CONCELHO_ORIGINAL) {
+    throw new Error(
+      `Concelho inicial devia ser «${CONCELHO_ORIGINAL}»; obtido: «${concelho}».`,
+    );
+  }
+}
+
+async function abrirModalEdicaoDadosAtuais(driver) {
   await abrirEdicaoPraia(driver, PRAIA_NOME);
+}
+
+async function preencherConcelhoAtualizadoNoModal(driver) {
   await alterarConcelhoNoModal(driver, CONCELHO_NOVO);
+  await pausa(driver, 500);
+  console.log(`Formulário com concelho «${CONCELHO_NOVO}».`);
+}
+
+async function guardarEdicaoPraia(driver) {
   await clicarGuardarAlteracoes(driver);
   await aguardarMensagemGuardada(driver);
+  console.log("Alterações da praia guardadas.");
+}
 
+async function confirmarConcelhoActualizadoNaLista(driver) {
   await driver.wait(async () => {
     const concelho = await lerConcelhoNaTabela(driver, PRAIA_NOME);
     return concelho === CONCELHO_NOVO;
   }, 20000);
 
-  const concelhoDepois = await lerConcelhoNaTabela(driver, PRAIA_NOME);
-  if (concelhoDepois !== CONCELHO_NOVO) {
+  const concelho = await lerConcelhoNaTabela(driver, PRAIA_NOME);
+  if (concelho !== CONCELHO_NOVO) {
     throw new Error(
-      `Concelho na tabela incorrecto: esperado «${CONCELHO_NOVO}», obtido «${concelhoDepois}».`,
+      `Concelho na tabela incorrecto: esperado «${CONCELHO_NOVO}», obtido «${concelho}».`,
     );
   }
 
   console.log(
-    `Praia actualizada na lista: ${PRAIA_NOME} · ${concelhoAntes} → ${concelhoDepois}.`,
+    `Praia actualizada na lista: ${PRAIA_NOME} · ${CONCELHO_ORIGINAL} → ${concelho}.`,
   );
 }
 
@@ -413,7 +432,41 @@ async function main() {
     await executarPasso(driver, 1, "Login como administrador", "login", () => fazerLogin(driver));
     await reporDadosOriginaisPraia();
     await executarPasso(driver, 2, "Abrir lista de praias", "lista_praias", () => abrirListaPraias(driver));
-    await executarPasso(driver, 3, "Editar concelho da praia", "praia_editada", () => editarConcelhoPraia(driver));
+    await executarPasso(
+      driver,
+      3,
+      "Concelho actual na lista",
+      "dados_atuais_lista",
+      () => confirmarConcelhoActualNaLista(driver),
+    );
+    await executarPasso(
+      driver,
+      4,
+      "Modal de edição com dados actuais",
+      "modal_dados_atuais",
+      () => abrirModalEdicaoDadosAtuais(driver),
+    );
+    await executarPasso(
+      driver,
+      5,
+      "Formulário com concelho actualizado",
+      "modal_dados_atualizados",
+      () => preencherConcelhoAtualizadoNoModal(driver),
+    );
+    await executarPasso(
+      driver,
+      6,
+      "Alterações guardadas com sucesso",
+      "alteracao_guardada",
+      () => guardarEdicaoPraia(driver),
+    );
+    await executarPasso(
+      driver,
+      7,
+      "Concelho actualizado na lista",
+      "dados_atualizados_lista",
+      () => confirmarConcelhoActualizadoNaLista(driver),
+    );
 
     console.log("=== Teste concluído com sucesso ===");
   } catch (erro) {

@@ -22,7 +22,7 @@ const REGISTO_NOME =
   process.env.REGISTER_NAME || `Voluntário Teste ${Date.now()}`;
 const REGISTO_EMAIL =
   process.env.REGISTER_EMAIL ||
-  `selenium.registo.${Date.now()}@teste.pt`;
+  `${Date.now()}@teste.pt`;
 const REGISTO_DATA_NASCIMENTO =
   process.env.REGISTER_BIRTH_DATE || "1990-05-15";
 
@@ -120,7 +120,7 @@ async function preencherCampoData(driver, elemento, valorIso) {
   }
 }
 
-async function preencherRegisto(driver) {
+async function preencherFormularioRegisto(driver) {
   const nome = await driver.findElement(By.id("register-name"));
   const email = await driver.findElement(By.id("register-email"));
   const dataNascimento = await driver.findElement(By.id("register-birth-date"));
@@ -146,7 +146,10 @@ async function preencherRegisto(driver) {
     await termos.click();
   }
   await pausa(driver, 600);
+  console.log("Formulário de registo preenchido (nome, email, data de nascimento).");
+}
 
+async function submeterRegisto(driver) {
   const criar = await driver.findElement(
     By.xpath("//button[@type='submit' and contains(normalize-space(),'Criar conta')]"),
   );
@@ -225,9 +228,20 @@ async function main() {
     console.log("=== RF03 ===");
     await executarPasso(driver, 1, "Abrir página de login", "pagina_login", () => abrirPaginaLogin(driver));
     await executarPasso(driver, 2, "Ir para a página de registo", "pagina_registo", () => irParaPaginaRegisto(driver));
-    await executarPasso(driver, 3, "Preencher formulário de registo", "preencher_formulario", () => preencherRegisto(driver));
-    await executarPasso(driver, 4, "Abrir perfil do utilizador", "perfil_aberto", () => abrirPerfil(driver));
-    await executarPasso(driver, 5, "Confirmar dados no perfil", "dados_confirmados", () => verificarDadosNoPerfil(driver));
+    await executarPasso(
+      driver,
+      3,
+      "Formulário de criação de conta com dados preenchidos",
+      "formulario_preenchido",
+      () => preencherFormularioRegisto(driver),
+    );
+    await executarPasso(driver, 4, "Submeter registo e criar conta", "conta_criada", () => submeterRegisto(driver), {
+      capturar: false,
+    });
+    await executarPasso(driver, 5, "Perfil com os mesmos dados do registo", "perfil_dados", () => abrirPerfil(driver));
+    await executarPasso(driver, 6, "Confirmar correspondência dos dados", "dados_confirmados", () => verificarDadosNoPerfil(driver), {
+      capturar: false,
+    });
 
     console.log("=== Teste concluído com sucesso ===");
   } catch (erro) {

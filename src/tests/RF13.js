@@ -206,7 +206,7 @@ async function clicarNovaCampanha(driver) {
   console.log("Modal de criação de campanha aberto.");
 }
 
-async function preencherPassoDetalhes(driver) {
+async function preencherFormularioPasso1(driver) {
   const titulo = await driver.findElement(By.id("create-campaign-title"));
   const hora = await driver.findElement(By.id("create-campaign-meeting-time"));
   const dataInicio = await driver.findElement(By.id("create-campaign-start-date"));
@@ -230,7 +230,11 @@ async function preencherPassoDetalhes(driver) {
   await escolherOpcaoCombobox(driver, "Estado", ESTADO_LABEL);
   await pausa(driver, 300);
   await escreverLentamente(informacoes, INFORMACOES);
+  await pausa(driver, 500);
+  console.log("Passo 1 (detalhes) preenchido.");
+}
 
+async function avancarParaPassoPraias(driver) {
   const proximo = await driver.findElement(
     By.xpath(
       `${xpathModalCriarCampanha()}//button[@type='submit' and normalize-space()='Próximo']`,
@@ -246,7 +250,7 @@ async function preencherPassoDetalhes(driver) {
     15000,
   );
   await pausa(driver);
-  console.log("Passo 1 (detalhes) preenchido; passo 2 (praias) aberto.");
+  console.log("Passo 2 (praias) aberto.");
 }
 
 async function preencherPassoPraiasECriar(driver) {
@@ -324,8 +328,23 @@ async function main() {
     await executarPasso(driver, 1, "Login como administrador", "login", () => fazerLogin(driver));
     await executarPasso(driver, 2, "Abrir lista de campanhas", "lista_campanhas", () => abrirListaCampanhas(driver));
     await executarPasso(driver, 3, "Clicar em Nova campanha", "nova_campanha", () => clicarNovaCampanha(driver));
-    await executarPasso(driver, 4, "Preencher detalhes da campanha", "detalhes_preenchidos", () => preencherPassoDetalhes(driver));
-    await executarPasso(driver, 5, "Seleccionar praias e criar campanha", "campanha_criada", () => preencherPassoPraiasECriar(driver));
+    await executarPasso(
+      driver,
+      4,
+      "Passo 1 do formulário preenchido",
+      "passo1_preenchido",
+      () => preencherFormularioPasso1(driver),
+    );
+    await executarPasso(
+      driver,
+      5,
+      "Seleccionar praias e criar campanha",
+      "campanha_criada",
+      async () => {
+        await avancarParaPassoPraias(driver);
+        await preencherPassoPraiasECriar(driver);
+      },
+    );
     await executarPasso(driver, 6, "Confirmar campanha na lista pública", "campanha_na_lista", () => verificarCampanhaNaLista(driver));
 
     console.log("=== Teste concluído com sucesso ===");

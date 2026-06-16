@@ -369,17 +369,48 @@ async function confirmarCatalogoSeedIntacto() {
   );
 }
 
-async function eliminarPraiaComSucesso(driver, nome) {
-  await clicarApagarPraia(driver, nome);
+async function confirmarPraiaTesteNaLista(driver) {
+  const visivel = await praiaVisivelNaLista(driver, PRAIA_SEM_CAMPANHAS);
+  if (!visivel) {
+    throw new Error(
+      `Praia «${PRAIA_SEM_CAMPANHAS}» devia estar visível na lista antes de eliminar.`,
+    );
+  }
+  console.log(`Praia «${PRAIA_SEM_CAMPANHAS}» visível na lista.`);
+}
+
+async function abrirModalEliminarPraia(driver) {
+  await clicarApagarPraia(driver, PRAIA_SEM_CAMPANHAS);
+  await pausa(driver, 500);
+}
+
+async function confirmarEliminacaoNoModal(driver) {
   await confirmarEliminarModal(driver);
   await aguardarToastComTexto(driver, ["praia eliminada"]);
   await aguardarToastsDesaparecerem(driver);
+  console.log(`Eliminação confirmada para «${PRAIA_SEM_CAMPANHAS}».`);
+}
 
-  const aindaVisivel = await praiaVisivelNaLista(driver, nome);
+async function confirmarPraiaRemovidaDaLista(driver) {
+  await irParaPrimeiraPagina(driver);
+  const aindaVisivel = await praiaVisivelNaLista(driver, PRAIA_SEM_CAMPANHAS);
   if (aindaVisivel) {
-    throw new Error(`A praia «${nome}» devia ter sido removida da lista.`);
+    throw new Error(
+      `A praia «${PRAIA_SEM_CAMPANHAS}» devia ter sido removida da lista.`,
+    );
   }
-  console.log(`Praia «${nome}» eliminada com sucesso.`);
+  console.log(`Praia «${PRAIA_SEM_CAMPANHAS}» removida da listagem.`);
+}
+
+async function confirmarCatalogoSeedNaLista(driver) {
+  for (const nome of PRAIAS_SEED) {
+    if (!(await praiaVisivelNaLista(driver, nome))) {
+      throw new Error(`Praia seed «${nome}» em falta na lista.`);
+    }
+    console.log(`Praia seed presente na lista: ${nome}`);
+  }
+
+  await confirmarCatalogoSeedIntacto();
 }
 
 async function main() {
@@ -390,8 +421,41 @@ async function main() {
     await executarPasso(driver, 1, "Login como administrador", "login", () => fazerLogin(driver));
     await garantirPraiaSemCampanhasDisponivel();
     await executarPasso(driver, 2, "Abrir catálogo de praias", "catalogo_praias", () => abrirListaPraias(driver));
-    await executarPasso(driver, 3, "Eliminar praia sem campanhas", "praia_eliminada", () => eliminarPraiaComSucesso(driver, PRAIA_SEM_CAMPANHAS));
-    await executarPasso(driver, 4, "Confirmar integridade do catálogo seed", "catalogo_intacto", () => confirmarCatalogoSeedIntacto());
+    await executarPasso(
+      driver,
+      3,
+      "Praia de teste visível na lista",
+      "praia_na_lista",
+      () => confirmarPraiaTesteNaLista(driver),
+    );
+    await executarPasso(
+      driver,
+      4,
+      "Modal de eliminar praia aberto",
+      "modal_eliminar",
+      () => abrirModalEliminarPraia(driver),
+    );
+    await executarPasso(
+      driver,
+      5,
+      "Eliminação confirmada",
+      "praia_eliminada",
+      () => confirmarEliminacaoNoModal(driver),
+    );
+    await executarPasso(
+      driver,
+      6,
+      "Praia removida da listagem",
+      "praia_removida_lista",
+      () => confirmarPraiaRemovidaDaLista(driver),
+    );
+    await executarPasso(
+      driver,
+      7,
+      "Praias do seed intactas no catálogo",
+      "catalogo_intacto",
+      () => confirmarCatalogoSeedNaLista(driver),
+    );
 
     console.log("=== Teste concluído com sucesso ===");
   } catch (erro) {

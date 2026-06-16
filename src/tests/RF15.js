@@ -310,7 +310,7 @@ async function confirmarCampanhaNaLista(driver) {
   console.log("Campanha visível na listagem antes de eliminar.");
 }
 
-async function eliminarCampanhaNaLista(driver) {
+async function abrirModalEliminarCampanha(driver) {
   await pesquisarCampanha(driver, TITULO_CAMPANHA);
   const linha = await driver.wait(
     until.elementLocated(By.xpath(xpathLinhaCampanha(TITULO_CAMPANHA))),
@@ -329,8 +329,11 @@ async function eliminarCampanhaNaLista(driver) {
     until.elementLocated(By.id("delete-campaign-title")),
     10000,
   );
+  await pausa(driver, 500);
   console.log("Modal «Eliminar Campanha» aberto.");
+}
 
+async function confirmarEliminacaoCampanha(driver) {
   const confirmar = await driver.wait(
     until.elementLocated(
       By.xpath(
@@ -371,8 +374,21 @@ async function main() {
       await criarCampanhaTeste(driver);
     });
     await executarPasso(driver, 3, "Confirmar campanha na lista", "campanha_na_lista", () => confirmarCampanhaNaLista(driver));
-    await executarPasso(driver, 4, "Eliminar campanha", "eliminar_campanha", () => eliminarCampanhaNaLista(driver));
-    await executarPasso(driver, 5, "Confirmar campanha removida", "campanha_removida", () => confirmarCampanhaRemovida(driver));
+    await executarPasso(
+      driver,
+      4,
+      "Modal de eliminar campanha aberto",
+      "modal_eliminar",
+      () => abrirModalEliminarCampanha(driver),
+    );
+    await executarPasso(
+      driver,
+      5,
+      "Eliminação confirmada",
+      "campanha_eliminada",
+      () => confirmarEliminacaoCampanha(driver),
+    );
+    await executarPasso(driver, 6, "Confirmar campanha removida da lista", "campanha_removida", () => confirmarCampanhaRemovida(driver));
 
     console.log("=== Teste concluído com sucesso ===");
   } catch (erro) {

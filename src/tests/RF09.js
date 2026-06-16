@@ -272,7 +272,7 @@ async function obterBotaoGuardar(driver) {
   );
 }
 
-async function registarRecolha(driver) {
+async function abrirModalRegistarRecolha(driver) {
   const botao = await driver.wait(
     until.elementLocated(
       By.xpath(
@@ -289,8 +289,11 @@ async function registarRecolha(driver) {
     10000,
   );
   await aguardarOpcoesResiduos(driver);
-  await pausa(driver);
+  await pausa(driver, 500);
+  console.log("Modal «Registar recolha» aberto.");
+}
 
+async function preencherModalRecolha(driver) {
   await escolherOpcaoSelect(driver, 0, PRAIA_NOME);
   await escolherOpcaoSelect(driver, 1, RESIDUO_NOME);
 
@@ -301,6 +304,13 @@ async function registarRecolha(driver) {
 
   const guardar = await obterBotaoGuardar(driver);
   await driver.wait(async () => await guardar.isEnabled(), 10000);
+  console.log(
+    `Modal preenchido: ${PRAIA_NOME} · ${RESIDUO_NOME} · ${QUANTIDADE} un.`,
+  );
+}
+
+async function submeterRecolha(driver) {
+  const guardar = await obterBotaoGuardar(driver);
   await guardar.click();
 
   await driver.wait(async () => {
@@ -410,11 +420,31 @@ async function main() {
       await abrirInformacoesCampanha(driver);
       indiceAntes = await lerIndiceAmbiental(driver);
     });
-    await executarPasso(driver, 3, "Registar recolha na campanha", "recolha_registada", async () => {
-      await abrirRecolhasCampanha(driver);
-      await registarRecolha(driver);
-    });
-    await executarPasso(driver, 4, "Confirmar actualização do índice de poluição", "indice_atualizado", async () => {
+    await executarPasso(
+      driver,
+      3,
+      "Modal Registar recolha aberto",
+      "modal_registar_recolha",
+      async () => {
+        await abrirRecolhasCampanha(driver);
+        await abrirModalRegistarRecolha(driver);
+      },
+    );
+    await executarPasso(
+      driver,
+      4,
+      "Modal preenchido com praia, resíduo e quantidade",
+      "modal_preenchido",
+      () => preencherModalRecolha(driver),
+    );
+    await executarPasso(
+      driver,
+      5,
+      "Recolha gravada na tabela",
+      "recolha_registada",
+      () => submeterRecolha(driver),
+    );
+    await executarPasso(driver, 6, "Confirmar actualização do índice de poluição", "indice_atualizado", async () => {
       await abrirInformacoesCampanha(driver);
       const indiceDepois = await lerIndiceAmbiental(driver);
       await verificarActualizacaoIndice(indiceAntes, indiceDepois);

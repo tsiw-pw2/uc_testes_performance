@@ -139,14 +139,9 @@ async function lerPresencaNaTabela(driver) {
   return (await celulas[5].getText()).trim();
 }
 
-async function marcarPresencaManual(driver) {
+async function abrirModalGerirInscricao(driver) {
   const presencaAntes = await lerPresencaNaTabela(driver);
   console.log(`Presença antes: ${presencaAntes || "(vazio)"}`);
-
-  if (presencaAntes === "Sim") {
-    console.log("Presença já estava confirmada; a saltar edição.");
-    return;
-  }
 
   const botaoGerir = await driver.wait(
     until.elementLocated(
@@ -163,9 +158,44 @@ async function marcarPresencaManual(driver) {
     until.elementLocated(By.id("edit-registration-title")),
     10000,
   );
-  await pausa(driver);
+  await pausa(driver, 500);
+  console.log("Modal «Gerir inscrição» aberto.");
+}
 
-  await escolherOpcaoSelectModal(driver, "edit-reg-attendance", "Presente");
+async function abrirDropdownPresenca(driver) {
+  const modal = await driver.findElement(
+    By.xpath(
+      "//div[@role='dialog'][.//*[@id='edit-registration-title']]",
+    ),
+  );
+  const combobox = await modal.findElement(By.id("edit-reg-attendance"));
+  await combobox.click();
+  await pausa(driver, 400);
+
+  await driver.wait(
+    until.elementLocated(By.css('[role="listbox"]')),
+    10000,
+  );
+  await pausa(driver, 500);
+  console.log("Dropdown de presença aberto.");
+}
+
+async function confirmarPresencaPresente(driver) {
+  const listboxes = await driver.findElements(By.css('[role="listbox"]'));
+  if (listboxes.length === 0) {
+    await escolherOpcaoSelectModal(driver, "edit-reg-attendance", "Presente");
+  } else {
+    const opcao = await driver.wait(
+      until.elementLocated(
+        By.xpath(
+          "//div[@role='listbox']//div[@role='option'][.//span[normalize-space()='Presente'] or normalize-space()='Presente']",
+        ),
+      ),
+      10000,
+    );
+    await opcao.click();
+    await pausa(driver, 450);
+  }
 
   const guardar = await driver.findElement(
     By.xpath(
@@ -190,9 +220,7 @@ async function marcarPresencaManual(driver) {
     );
   }
 
-  console.log(
-    `Presença manual para ${VOLUNTARIO_NOME}: ${presencaAntes || "-"} → ${presencaDepois}.`,
-  );
+  console.log(`Presença manual confirmada para ${VOLUNTARIO_NOME}: ${presencaDepois}.`);
 }
 
 async function main() {
@@ -201,8 +229,34 @@ async function main() {
   try {
     console.log("=== RF07 ===");
     await executarPasso(driver, 1, "Login como administrador", "login", () => fazerLogin(driver));
-    await executarPasso(driver, 2, "Abrir separador de voluntários da campanha", "voluntarios_abertos", () => abrirVoluntariosCampanha(driver));
-    await executarPasso(driver, 3, "Marcar presença manualmente", "presenca_marcada", () => marcarPresencaManual(driver));
+    await executarPasso(
+      driver,
+      2,
+      "Abrir separador de voluntários da campanha",
+      "voluntarios_abertos",
+      () => abrirVoluntariosCampanha(driver),
+    );
+    await executarPasso(
+      driver,
+      3,
+      "Modal Gerir inscrição aberto",
+      "modal_gerir_inscricao",
+      () => abrirModalGerirInscricao(driver),
+    );
+    await executarPasso(
+      driver,
+      4,
+      "Dropdown de presença aberto",
+      "dropdown_presenca_aberto",
+      () => abrirDropdownPresenca(driver),
+    );
+    await executarPasso(
+      driver,
+      5,
+      "Presença marcada como Presente",
+      "presenca_marcada",
+      () => confirmarPresencaPresente(driver),
+    );
 
     console.log("=== Teste concluído com sucesso ===");
   } catch (erro) {

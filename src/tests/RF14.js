@@ -354,14 +354,36 @@ async function preencherHorario(elemento, hora) {
   await elemento.sendKeys(hora);
 }
 
-async function alterarHorarioCampanha(driver) {
+async function abrirModalEdicaoDadosAtuais(driver) {
   const hora = await abrirEdicaoCampanha(driver);
-  const valorAntes = (await hora.getAttribute("value")) || "";
-  console.log(`Horário actual no formulário: ${valorAntes}`);
+  const valor = (await hora.getAttribute("value")) || "";
+  console.log(`Horário actual no formulário: ${valor}`);
 
+  if (valor !== HORA_ORIGINAL) {
+    throw new Error(
+      `Horário inicial devia ser «${HORA_ORIGINAL}»; obtido: «${valor}».`,
+    );
+  }
+}
+
+async function preencherHorarioAtualizadoNoFormulario(driver) {
+  const hora = await driver.wait(
+    until.elementLocated(By.id("edit-campaign-meeting-time")),
+    10000,
+  );
   await preencherHorario(hora, HORA_NOVA);
-  await pausa(driver, 400);
+  await pausa(driver, 500);
 
+  const valor = (await hora.getAttribute("value")) || "";
+  if (valor !== HORA_NOVA) {
+    throw new Error(
+      `Formulário devia mostrar «${HORA_NOVA}»; obtido: «${valor}».`,
+    );
+  }
+  console.log(`Horário actualizado no formulário: ${valor}`);
+}
+
+async function submeterEdicaoCampanha(driver) {
   const modal = await driver.findElement(By.xpath(xpathModalEditar()));
   const proximo = await modal.findElement(
     By.xpath(".//button[@type='submit' and normalize-space()='Próximo']"),
@@ -394,6 +416,28 @@ async function alterarHorarioCampanha(driver) {
   console.log(`Horário alterado para ${HORA_NOVA}.`);
 }
 
+async function verificarHorarioGravadoNoModal(driver) {
+  const hora = await abrirEdicaoCampanha(driver);
+  const valor = (await hora.getAttribute("value")) || "";
+
+  if (valor !== HORA_NOVA) {
+    throw new Error(
+      `Horário não foi gravado: esperado «${HORA_NOVA}», obtido «${valor}».`,
+    );
+  }
+  console.log(`Horário confirmado no formulário: ${valor}.`);
+}
+
+async function fecharModalEdicao(driver) {
+  const cancelar = await driver.findElements(
+    By.xpath(`${xpathModalEditar()}//button[normalize-space()='Cancelar']`),
+  );
+  if (cancelar.length > 0) {
+    await cancelar[0].click();
+    await pausa(driver, 450);
+  }
+}
+
 async function aguardarMensagemGuardada(driver) {
   const alvo = TEXTOS_SUCESSO.map(normalizarTexto);
   await driver.wait(async () => {
@@ -407,24 +451,6 @@ async function aguardarMensagemGuardada(driver) {
   console.log("Alteração gravada (toast de sucesso).");
 }
 
-async function confirmarHorarioGravado(driver) {
-  const hora = await abrirEdicaoCampanha(driver);
-  const valor = (await hora.getAttribute("value")) || "";
-
-  const cancelar = await driver.findElement(
-    By.xpath(`${xpathModalEditar()}//button[normalize-space()='Cancelar']`),
-  );
-  await cancelar.click();
-  await pausa(driver, 450);
-
-  if (valor !== HORA_NOVA) {
-    throw new Error(
-      `Horário não foi gravado: esperado «${HORA_NOVA}», obtido «${valor}».`,
-    );
-  }
-  console.log(`Horário confirmado no formulário: ${valor}.`);
-}
-
 async function main() {
   const driver = await criarDriver();
 
@@ -436,8 +462,35 @@ async function main() {
       await abrirListaCampanhas(driver);
       await criarCampanhaTeste(driver);
     });
-    await executarPasso(driver, 3, "Alterar horário da campanha", "horario_alterado", () => alterarHorarioCampanha(driver));
-    await executarPasso(driver, 4, "Confirmar horário gravado", "horario_confirmado", () => confirmarHorarioGravado(driver));
+    await executarPasso(
+      driver,
+      3,
+      "Modal de edição com horário actual",
+      "dados_atuais",
+      () => abrirModalEdicaoDadosAtuais(driver),
+    );
+    await executarPasso(
+      driver,
+      4,
+      "Formulário com horário actualizado",
+      "dados_atualizados",
+      () => preencherHorarioAtualizadoNoFormulario(driver),
+    );
+    await executarPasso(
+      driver,
+      5,
+      "Alteração guardada com sucesso",
+      "horario_guardado",
+      () => submeterEdicaoCampanha(driver),
+    );
+    await executarPasso(
+      driver,
+      6,
+      "Horário confirmado ao reabrir edição",
+      "horario_confirmado",
+      () => verificarHorarioGravadoNoModal(driver),
+    );
+    await fecharModalEdicao(driver);
 
     console.log("=== Teste concluído com sucesso ===");
   } catch (erro) {

@@ -161,18 +161,30 @@ async function fecharFiltroCategorias(driver, combobox) {
   await pausa(driver, 300);
 }
 
-async function garantirCategoriaNoFiltro(driver, nomeCategoria) {
+
+async function abrirFiltroComCategoriasSeleccionadas(driver) {
   await aguardarCarregamentoLista(driver);
-  const combobox = await abrirFiltroCategorias(driver);
-  await alternarOpcaoListbox(driver, nomeCategoria);
-  await fecharFiltroCategorias(driver, combobox);
-  await aguardarCarregamentoLista(driver);
-  console.log(`Categoria activa no filtro: ${nomeCategoria}`);
+  await abrirFiltroCategorias(driver);
+  await alternarOpcaoListbox(driver, CATEGORIA_PLASTICOS);
+  await alternarOpcaoListbox(driver, CATEGORIA_VIDRO);
+  await pausa(driver, 500);
+
+  await driver.wait(
+    until.elementLocated(
+      By.css('div[role="listbox"][aria-multiselectable="true"]'),
+    ),
+    10000,
+  );
+  console.log(
+    `Dropdown aberto com ${CATEGORIA_PLASTICOS} e ${CATEGORIA_VIDRO} seleccionados.`,
+  );
 }
 
-async function selecionarPlasticoEVidro(driver) {
-  await garantirCategoriaNoFiltro(driver, CATEGORIA_PLASTICOS);
-  await garantirCategoriaNoFiltro(driver, CATEGORIA_VIDRO);
+async function fecharFiltroEVerificar(driver) {
+  const filtro = await driver.findElement(By.id("waste-filter-category"));
+  const combobox = await filtro.findElement(By.css('[role="combobox"]'));
+  await fecharFiltroCategorias(driver, combobox);
+  await aguardarCarregamentoLista(driver);
 
   const rotulo = await textoFiltroCategorias(driver);
   if (!rotulo.includes("2")) {
@@ -281,8 +293,27 @@ async function main() {
     console.log("=== RF10 ===");
     await executarPasso(driver, 1, "Login como administrador", "login", () => fazerLogin(driver));
     await executarPasso(driver, 2, "Abrir registo de resíduos", "registo_residuos", () => abrirRegistoResiduos(driver));
-    await executarPasso(driver, 3, "Seleccionar Plástico e Vidro", "filtro_selecionado", () => selecionarPlasticoEVidro(driver));
-    await executarPasso(driver, 4, "Verificar relatório por categorias", "relatorio_verificado", () => verificarRelatorioPorCategorias(driver));
+    await executarPasso(
+      driver,
+      3,
+      "Dropdown de categorias aberto com Plástico e Vidro",
+      "dropdown_filtros_aberto",
+      () => abrirFiltroComCategoriasSeleccionadas(driver),
+    );
+    await executarPasso(
+      driver,
+      4,
+      "Filtro aplicado ao relatório",
+      "filtro_aplicado",
+      () => fecharFiltroEVerificar(driver),
+    );
+    await executarPasso(
+      driver,
+      5,
+      "Verificar relatório por categorias",
+      "relatorio_verificado",
+      () => verificarRelatorioPorCategorias(driver),
+    );
 
     console.log("=== Teste concluído com sucesso ===");
   } catch (erro) {

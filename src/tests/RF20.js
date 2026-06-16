@@ -271,7 +271,7 @@ async function obterBotaoGuardar(driver) {
   );
 }
 
-async function registarRecolha(driver) {
+async function abrirModalRegistarRecolha(driver) {
   const botao = await driver.wait(
     until.elementLocated(
       By.xpath(
@@ -288,8 +288,11 @@ async function registarRecolha(driver) {
     10000,
   );
   await aguardarOpcoesResiduos(driver);
-  await pausa(driver);
+  await pausa(driver, 500);
+  console.log("Modal «Registar recolha» aberto.");
+}
 
+async function preencherModalRecolha(driver) {
   await escolherOpcaoSelect(driver, 0, PRAIA_NOME);
   await escolherOpcaoSelect(driver, 1, RESIDUO_NOME);
 
@@ -300,6 +303,13 @@ async function registarRecolha(driver) {
 
   const guardar = await obterBotaoGuardar(driver);
   await driver.wait(async () => await guardar.isEnabled(), 10000);
+  console.log(
+    `Modal preenchido: ${PRAIA_NOME} · ${RESIDUO_NOME} · ${QUANTIDADE} un.`,
+  );
+}
+
+async function submeterRecolha(driver) {
+  const guardar = await obterBotaoGuardar(driver);
   await guardar.click();
 
   await driver.wait(async () => {
@@ -405,15 +415,39 @@ async function main() {
     let indiceAntes;
     await executarPasso(driver, 1, "Login como administrador", "login", () => fazerLogin(driver));
     await limparRecolhaTesteAnterior(driver);
-    await executarPasso(driver, 2, "Ler índice ambiental antes da recolha", "indice_antes", async () => {
+    await executarPasso(driver, 2, "Índice ambiental antes da recolha", "indice_antes", async () => {
       await abrirInformacoesCampanha(driver);
       indiceAntes = await lerIndiceAmbiental(driver);
     });
-    await executarPasso(driver, 3, "Registar nova recolha", "recolha_registada", async () => {
-      await abrirRecolhasCampanha(driver);
-      await registarRecolha(driver);
-    });
-    await executarPasso(driver, 4, "Confirmar actualização do índice ambiental", "indice_atualizado", async () => {
+    await executarPasso(
+      driver,
+      3,
+      "Abrir separador Recolhas",
+      "recolhas_abertas",
+      () => abrirRecolhasCampanha(driver),
+    );
+    await executarPasso(
+      driver,
+      4,
+      "Modal Registar recolha aberto",
+      "modal_registar_recolha",
+      () => abrirModalRegistarRecolha(driver),
+    );
+    await executarPasso(
+      driver,
+      5,
+      "Modal preenchido com praia, resíduo e quantidade",
+      "modal_preenchido",
+      () => preencherModalRecolha(driver),
+    );
+    await executarPasso(
+      driver,
+      6,
+      "Recolha gravada na tabela",
+      "recolha_registada",
+      () => submeterRecolha(driver),
+    );
+    await executarPasso(driver, 7, "Índice ambiental actualizado", "indice_atualizado", async () => {
       await abrirInformacoesCampanha(driver);
       const indiceDepois = await lerIndiceAmbiental(driver);
       await verificarActualizacaoIndice(indiceAntes, indiceDepois);

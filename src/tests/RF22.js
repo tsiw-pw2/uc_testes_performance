@@ -103,7 +103,7 @@ async function abrirComentariosCampanha(driver) {
   console.log(`Painel de comentários aberto: ${url}`);
 }
 
-async function publicarComentario(driver, texto) {
+async function preencherFormularioComentario(driver, texto) {
   const textarea = await driver.wait(
     until.elementLocated(By.id("campaign-new-comment")),
     10000,
@@ -111,7 +111,10 @@ async function publicarComentario(driver, texto) {
   await pausa(driver);
   await escreverLentamente(textarea, texto);
   await pausa(driver, 600);
+  console.log("Formulário de comentário preenchido.");
+}
 
+async function submeterComentario(driver, texto) {
   const publicar = await driver.findElement(
     By.xpath(
       "//div[@id='campaign-panel-comentarios']//button[@type='submit' and contains(., 'Publicar')]",
@@ -185,7 +188,7 @@ function xpathArtigoComentario(texto) {
   return `//article[.//p[contains(normalize-space(.), ${JSON.stringify(trecho)})]]`;
 }
 
-async function ocultarEMostrarComentario(driver, texto) {
+async function ocultarComentario(driver, texto) {
   const artigo = await driver.wait(
     until.elementLocated(By.xpath(xpathArtigoComentario(texto))),
     10000,
@@ -205,10 +208,16 @@ async function ocultarEMostrarComentario(driver, texto) {
     ),
     15000,
   );
+  await pausa(driver, 500);
   console.log("Comentário ocultado (badge «Oculto» visível).");
+}
 
-  const botaoMostrar = await driver.findElement(
-    By.xpath(`${xpathArtigoComentario(texto)}//button[normalize-space()='Mostrar']`),
+async function mostrarComentario(driver, texto) {
+  const botaoMostrar = await driver.wait(
+    until.elementLocated(
+      By.xpath(`${xpathArtigoComentario(texto)}//button[normalize-space()='Mostrar']`),
+    ),
+    10000,
   );
   await pausa(driver, 600);
   await botaoMostrar.click();
@@ -220,6 +229,7 @@ async function ocultarEMostrarComentario(driver, texto) {
     return badges.length === 0;
   }, 15000);
 
+  await pausa(driver, 500);
   console.log("Comentário voltou a estar visível (Mostrar).");
 }
 
@@ -231,8 +241,34 @@ async function main() {
     console.log("=== RF22 ===");
     await executarPasso(driver, 1, "Login como administrador", "login", () => fazerLogin(driver));
     await executarPasso(driver, 2, "Abrir comentários da campanha", "comentarios_abertos", () => abrirComentariosCampanha(driver));
-    await executarPasso(driver, 3, "Publicar comentário de teste", "comentario_publicado", () => publicarComentario(driver, textoComentario));
-    await executarPasso(driver, 4, "Ocultar e mostrar comentário (moderação)", "comentario_moderado", () => ocultarEMostrarComentario(driver, textoComentario));
+    await executarPasso(
+      driver,
+      3,
+      "Formulário de comentário preenchido",
+      "comentario_formulario_preenchido",
+      () => preencherFormularioComentario(driver, textoComentario),
+    );
+    await executarPasso(
+      driver,
+      4,
+      "Comentário publicado na lista",
+      "comentario_publicado",
+      () => submeterComentario(driver, textoComentario),
+    );
+    await executarPasso(
+      driver,
+      5,
+      "Comentário ocultado pelo administrador",
+      "comentario_oculto",
+      () => ocultarComentario(driver, textoComentario),
+    );
+    await executarPasso(
+      driver,
+      6,
+      "Comentário visível após Mostrar",
+      "comentario_visivel",
+      () => mostrarComentario(driver, textoComentario),
+    );
 
     console.log("=== Teste concluído com sucesso ===");
   } catch (erro) {
